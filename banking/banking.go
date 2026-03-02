@@ -10,3 +10,13 @@ type Account struct {
 func NewAccount(owner string) *Account {
 	return &Account{owner: owner, balance: 0}
 }
+
+// Deposit adds money to the account
+func (a *Account) Deposit(amount int) {
+	a.balance += amount
+}
+
+// Balance returns the current balance of the account
+func (a *Account) Balance() int {
+	return a.balance
+}
