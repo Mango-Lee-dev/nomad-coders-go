@@ -1,51 +1,43 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"log"
 	"net/http"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
-var errRequestFailed = errors.New("Request failed")
-
-type results struct {
-	url string
-	status string
-}
+var BASE_URL = "https://kr.indeed.com/jobs?q=python&limit=50&vjk=211d68e47e6d8074"
 
 func main() {
-	r := make(map[string]string)
-	channel := make(chan results)
-	urls := []string{
-		"https://www.google.com",
-		"https://www.naver.com",
-		"https://www.daum.net",
-		"https://www.yahoo.com",
-		"https://www.bing.com",
-		"https://www.ask.com",
-		"https://www.duckduckgo.com",
-		"https://www.yahoo.com",
-		"https://www.bing.com",
-	}
+	getPages()
+}
 
-	for _, url := range urls {
-		go hitURL(url, channel)
-	}
-	for i := 0; i < len(urls); i++ {
-		result := <-channel
-		r[result.url] = result.status
-	}
+func getPages() int {
+	res, err := http.Get(BASE_URL)
+	checkErr(err)
+	checkCode(res)
+	
+	defer res.Body.Close()
+	
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 
-	for url, status := range r {
-		fmt.Println(url, status)
-	}
-}	
+	checkErr(err)
 
-func hitURL(url string, channel chan<- results) {
-	resp, err := http.Get(url)
-	status := "OK"
-	if err != nil || resp.StatusCode >= 400 {
-		status = "FAILED"
+	doc.Find(".navigation").Each(func(i int, s *goquery.Selection) {
+		fmt.Println(s.Text())
+	})
+	
+	return 0
+}
+
+func checkErr(err error) {
+	if err != nil {
+		log.Fatalln(err)
 	}
-	channel <- results{url: url, status: status}
+}
+
+func checkCode(res *http.Response) {
+
 }
