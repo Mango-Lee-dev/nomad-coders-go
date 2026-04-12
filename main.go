@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -11,10 +12,22 @@ import (
 var BASE_URL = "https://www.saramin.co.kr/zf_user/search/recruit?searchType=search&searchword=react"
 
 func main() {
-	getPages()
+	totalPages := getPages()
+
+	for i := 0; i < totalPages; i++ {
+		getPage(i)
+	}
+}
+
+func getPage(page int) {
+
+	//https://www.saramin.co.kr/zf_user/search/recruit?searchType=search&searchword=react&recruitPage=3&recruitSort=relation&recruitPageCount=40&inner_com_type=&company_cd=0%2C1%2C2%2C3%2C4%2C5%2C6%2C7%2C9%2C10&show_applied=&quick_apply=&except_read=&ai_head_hunting=&mainSearch=n
+	pageUrl := BASE_URL + "&recruitPage=" + strconv.Itoa(page) + "&recruitSort=relation&recruitPageCount=40&inner_com_type=&company_cd=0%2C1%2C2%2C3%2C4%2C5%2C6%2C7%2C9%2C10&show_applied=&quick_apply=&except_read=&ai_head_hunting=&mainSearch=n"
+	fmt.Println("Visiting", pageUrl)
 }
 
 func getPages() int {
+	pages := 0
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", BASE_URL, nil)
 	checkErr(err)
@@ -33,13 +46,11 @@ func getPages() int {
 
 	checkErr(err)
 
-	fmt.Println("=== .pagination 검색 결과 ===")
 	doc.Find(".pagination").Each(func(i int, s *goquery.Selection) {
-		html, _ := s.Html()
-		fmt.Println(html)
+		pages = s.Find("a").Length()
 	})
-	
-	return 0
+
+	return pages
 }
 
 func checkErr(err error) {
