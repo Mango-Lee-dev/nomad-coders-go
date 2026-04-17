@@ -54,7 +54,19 @@ func writeJobs(jobs []extractedJob) {
 	fmt.Println("Jobs written to CSV")
 }
 
+func extractJobs(card *goquery.Selection, c chan<- extractedJob) {
+	id, _ := card.Attr("data-gnb_idx")
+	title := card.Find(".job_tit>a").Text()
+	date := card.Find(".job_date").Text()
+	condition := card.Find(".job_condition").Text()
+	sector := card.Find(".job_sector").Text()
+	
+	c <- extractedJob{id: id, title: title, date: date, condition: condition, sector: sector}
+}
+
 func getPage(page int) []extractedJob {
+	var extractedJobs []extractedJob
+	c := make(chan extractedJob)
 	pageUrl := BASE_URL + "&recruitPage=" + strconv.Itoa(page) + "&recruitSort=relation&recruitPageCount=40&inner_com_type=&company_cd=0%2C1%2C2%2C3%2C4%2C5%2C6%2C7%2C9%2C10&show_applied=&quick_apply=&except_read=&ai_head_hunting=&mainSearch=n"
 
 	client := &http.Client{}
@@ -73,17 +85,15 @@ func getPage(page int) []extractedJob {
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	checkErr(err)
 
-	var extractedJobs []extractedJob
-	doc.Find(".item_recruit").Each(func(i int, s *goquery.Selection) {
-		job := extractedJob{
-			title:     s.Find(".job_tit>a").Text(),
-			date:      s.Find(".job_date").Text(),
-			condition: s.Find(".job_condition").Text(),
-			sector:    s.Find(".job_sector").Text(),
-		}
-		extractedJobs = append(extractedJobs, job)
+	searchCards := doc.Find(".item_recruit")
+	searchCards.Each(func(i int, s *goquery.Selection) {
+		go extractJobs(s, c)
 	})
 
+	for i := 0; i < searchCards.Length(); i++ {
+		job := <-c
+		extractedJobs = append(extractedJobs, job)
+	}
 	return extractedJobs
 }
 
