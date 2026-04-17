@@ -9,6 +9,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+type extractedJob struct {
+	title string
+	date string
+	condition string
+	sector string
+}
+
 var BASE_URL = "https://www.saramin.co.kr/zf_user/search/recruit?searchType=search&searchword=react"
 
 func main() {
@@ -23,7 +30,19 @@ func getPage(page int) {
 
 	//https://www.saramin.co.kr/zf_user/search/recruit?searchType=search&searchword=react&recruitPage=3&recruitSort=relation&recruitPageCount=40&inner_com_type=&company_cd=0%2C1%2C2%2C3%2C4%2C5%2C6%2C7%2C9%2C10&show_applied=&quick_apply=&except_read=&ai_head_hunting=&mainSearch=n
 	pageUrl := BASE_URL + "&recruitPage=" + strconv.Itoa(page) + "&recruitSort=relation&recruitPageCount=40&inner_com_type=&company_cd=0%2C1%2C2%2C3%2C4%2C5%2C6%2C7%2C9%2C10&show_applied=&quick_apply=&except_read=&ai_head_hunting=&mainSearch=n"
-	fmt.Println("Visiting", pageUrl)
+
+	res, err := http.Get(pageUrl)
+	checkErr(err)
+	checkCode(res)
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	checkErr(err)
+
+	doc.Find(".item_recruit").Each(func(i int, s *goquery.Selection) {
+		fmt.Println(s.Find(".job_tit>a").Text())
+	})
+
+	defer res.Body.Close()
 }
 
 func getPages() int {
@@ -39,16 +58,27 @@ func getPages() int {
 	res, err := client.Do(req)
 	checkErr(err)
 	checkCode(res)
-	
-	defer res.Body.Close()
-	
-	doc, err := goquery.NewDocumentFromReader(res.Body)
 
+	doc, err := goquery.NewDocumentFromReader(res.Body)
 	checkErr(err)
 
 	doc.Find(".pagination").Each(func(i int, s *goquery.Selection) {
 		pages = s.Find("a").Length()
 	})
+
+	searchCards := doc.Find(".item_recruit")
+	searchCards.Each(func(i int, s *goquery.Selection) {
+		
+		job := extractedJob{
+			title: s.Find(".job_tit>a").Text(),
+			date: s.Find(".job_date").Text(),
+			condition: s.Find(".job_condition").Text(),
+			sector: s.Find(".job_sector").Text(),
+		}
+		fmt.Println(job)
+	})
+
+	defer res.Body.Close()
 
 	return pages
 }
