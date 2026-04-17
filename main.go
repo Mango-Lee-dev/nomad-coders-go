@@ -22,12 +22,18 @@ type extractedJob struct {
 var BASE_URL = "https://www.saramin.co.kr/zf_user/search/recruit?searchType=search&searchword=react"
 
 func main() {
+	var allJobs []extractedJob
+	c := make(chan []extractedJob)
+
 	totalPages := getPages()
 
-	var allJobs []extractedJob
 	for i := 0; i < totalPages; i++ {
-		jobs := getPage(i)
-		allJobs = append(allJobs, jobs...)
+		go getPage(i, c)
+	}
+
+	for i := 0; i < totalPages; i++ {
+		extractedJobs := <-c
+		allJobs = append(allJobs, extractedJobs...)
 	}
 
 	fmt.Println("Total jobs found:", len(allJobs))
@@ -64,7 +70,7 @@ func extractJobs(card *goquery.Selection, c chan<- extractedJob) {
 	c <- extractedJob{id: id, title: title, date: date, condition: condition, sector: sector}
 }
 
-func getPage(page int) []extractedJob {
+func getPage(page int, mainC chan<- []extractedJob) {
 	var extractedJobs []extractedJob
 	c := make(chan extractedJob)
 	pageUrl := BASE_URL + "&recruitPage=" + strconv.Itoa(page) + "&recruitSort=relation&recruitPageCount=40&inner_com_type=&company_cd=0%2C1%2C2%2C3%2C4%2C5%2C6%2C7%2C9%2C10&show_applied=&quick_apply=&except_read=&ai_head_hunting=&mainSearch=n"
@@ -94,7 +100,7 @@ func getPage(page int) []extractedJob {
 		job := <-c
 		extractedJobs = append(extractedJobs, job)
 	}
-	return extractedJobs
+	mainC <- extractedJobs
 }
 
 func getPages() int {
